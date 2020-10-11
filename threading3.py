@@ -11,6 +11,8 @@ results = []
 FILE_NAME = f"./scraping_results_{time.time()}" + ".json"
 CSV_FILE = "./top-1m-internet-domains.csv"
 END = 1000
+# END = 687192
+#       100000
 
 def save_file(file_name, data):
     with open(file_name, "w", encoding="utf8") as scraped_domains_file:
@@ -22,9 +24,9 @@ def read_csv(file_name):
             csvreader = csv.reader(website_csv, delimiter=",")
             websites_list_accumulator = []
             for x, domain in enumerate(csvreader):
-                if x < END:
+                # if x < END:
                     # "12313, google.com" <- grab the domain name only = domain[1]
-                    websites_list_accumulator.append(domain[1])
+                websites_list_accumulator.append(domain[1])
             return websites_list_accumulator
 def producer(queue, event, domain_name):
     """Pretend we're getting a number from the network."""
@@ -55,10 +57,11 @@ if __name__ == "__main__":
     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
     # logging.basicConfig(format=format, level=logging.ERROR, datefmt="%H:%M:%S")
 
-    pipeline = queue.Queue(maxsize=1000)
+    pipeline = queue.Queue(maxsize=END)
     event = threading.Event()
 
     domain_names = read_csv(CSV_FILE)
+    print(len(domain_names))
     print("\n\n\n")
     start = time.time()
     with concurrent.futures.ThreadPoolExecutor(max_workers=END) as executor:
