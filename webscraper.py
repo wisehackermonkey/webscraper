@@ -29,60 +29,93 @@
 import requests
 import csv
 import time
+import json 
 
+END = 4
 # Alexa top 1 million domain names (actually around 600k in reality)
-DOMAIN_NAME_CSV_FILE = "top-1m-internet-domains.csv"
+DOMAIN_NAME_CSV_FILE = "./top-1m-internet-domains.csv"
+SCRAPED_DOMAIN_NAME_FILE = f"scraping_results_x{END}_{time.time()}" + ".json"
 # number of domains to be read
-END = 100
+
 
 class webscraper:
     def __init__(self):
-        self._url = 1
+        self._websites_list = []
+        self._scraping_results = []
+        
 
+    # reads and grabs the second column of the csv file
+    # which hold list of internet domain names
+    def read_csv(self, file_name):
+        with open(file_name, "r") as website_csv:
+            csvreader = csv.reader(website_csv, delimiter=",")
+            for x, domain in enumerate(csvreader):
+                # "12313, google.com" <- grab the domain name only = domain[1]
+                self._websites_list.append(domain[1])
+
+    # downloads the raw html from a givin domain name: "domain_name" = "example.com"
     def scrape_domain(self, domain_name):
         try:
             return requests.get(f"http://{domain_name}", timeout=3).text
-
         except requests.exceptions.TooManyRedirects as error:
             return "Error: TooManyRedirects"
         except requests.exceptions.ConnectionError as error:
             return "Error: ConnectionError"
         except requests.exceptions.ReadTimeout as error:
             return "Error: ReadTimeout"
+    # scrapes all the domain names contained in self._websites_list
+    # which comes from read_csv()
+    def scrap_all(self):
+        for x, web_domain_name in enumerate(self._websites_list):
+            # number of domain names to scrap from .csv file
+            if x < END:
+
+                # record time it takes to grab page
+                start_fetch_time = time.time()
+                text_result = self.scrape_domain(web_domain_name)
+                end_fetch_time = time.time()
+
+                snipit = text_result[0:40].strip() if len(text_result) > 0 else ""
+                print(f"Website:{web_domain_name}")
+                print(f"Result:{snipit}.....")
+                print(f"Total Time: {end_fetch_time - start_fetch_time} seconds")
+                
+                self._scraping_results.append({
+                    "domain": web_domain_name,
+                    "epoch":time.time(),
+                    "loadtime": f"{end_fetch_time - start_fetch_time} seconds",
+                    "result": text_result
+                })
+    def save_file(self,file_name):
+        with open(file_name, "w", encoding="utf8") as scraped_domains_file:
+            scraped_domains_file.write(json.dumps(self._scraping_results))
+    @property
+    def website_list(self):
+        """
+        Gets list of websites read from csv file
+        """
+        return self._websites_list
 
     @property
-    def url(self):
+    def scraping_results(self):
         """
-        I am a getter.
-
-
+        Gets results of scraped  websites 
         """
-
-        return self._url
+        return self._scraping_results
 
 if __name__ == "__main__":
     print("webscriaping started")
 
-
     Webscraper = webscraper()
     # read domain names from csv file
-    with open("./top-1m-internet-domains.csv","r") as website_csv:
-        csvreader = csv.reader(website_csv, delimiter=",")
-        with open(f"scraping_results_x{END}_{time.time()}.txt","w", encoding="utf8") as scraped_domains_file:
-            start = time.time()
-            for x, domain in enumerate(csvreader):
-                if x < END:
-                    web_domain_name = domain[1]
-                    start_fetch_time = time.time()
-                    text_result = Webscraper.scrape_domain(web_domain_name) 
-                    end_fetch_time = time.time()
+    Webscraper.read_csv(DOMAIN_NAME_CSV_FILE)
+    
+    # scrape all domain names contained in DOMAIN_NAME_CSV_FILE
+    #v---- record how long the scraping operation takes
+    start = time.time()
+    Webscraper.scrap_all()
+    end = time.time()
+    
+    Webscraper.save_file(SCRAPED_DOMAIN_NAME_FILE)
 
-                    snipit = len(text_result) > 0 if text_result[0:40].strip() else ""
-                    print(f"Website:{web_domain_name}")
-                    print(f"Result:{snipit}.....")
-                    print(f"Total Time: {end_fetch_time - start_fetch_time} seconds")
-
-                    scraped_domains_file.write(f"\n{web_domain_name}, epoch:{time.time()}, loadtime: {end_fetch_time - start_fetch_time} seconds\n{text_result}\n``````````````\n")
-            end = time.time()
-
-            print(f"Time Elapsed: {end - start} seconds")
+    print(f"Time Elapsed: {end - start} seconds")
