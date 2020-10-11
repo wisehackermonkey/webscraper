@@ -1,9 +1,7 @@
 # webscraper
  simple script that scrapes top 1 million websites
 
-
-
- simple script that scrapes top 1 million websites
+![Screenshot_3](/assets/Screenshot_3_1bddlytot.png)
 
 Introduction
 ============
