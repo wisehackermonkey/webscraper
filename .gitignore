@@ -21,3 +21,4 @@
 .idea/workspace.xml
 scraping_results_*
 
+.vscode/settings.json
