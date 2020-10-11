@@ -34,7 +34,7 @@ import json
 END = 4
 # Alexa top 1 million domain names (actually around 600k in reality)
 DOMAIN_NAME_CSV_FILE = "./top-1m-internet-domains.csv"
-SCRAPED_DOMAIN_NAME_FILE = f"scraping_results_x{END}_{time.time()}" + ".json"
+SCRAPED_DOMAIN_NAME_FILE = f"./scraping_results_x{END}_{time.time()}" + ".json"
 # number of domains to be read
 
 
@@ -74,8 +74,9 @@ class webscraper:
                 start_fetch_time = time.time()
                 text_result = self.scrape_domain(web_domain_name)
                 end_fetch_time = time.time()
-
+                # get snipit of result text ex:" <!doctype html><html  style='font-size:..."
                 snipit = text_result[0:40].strip() if len(text_result) > 0 else ""
+
                 print(f"Website:{web_domain_name}")
                 print(f"Result:{snipit}.....")
                 print(f"Total Time: {end_fetch_time - start_fetch_time} seconds")
@@ -88,7 +89,8 @@ class webscraper:
                 })
     def save_file(self,file_name):
         with open(file_name, "w", encoding="utf8") as scraped_domains_file:
-            scraped_domains_file.write(json.dumps(self._scraping_results))
+            serialize_results = json.dumps(self._scraping_results)
+            scraped_domains_file.write(serialize_results)
     @property
     def website_list(self):
         """
@@ -110,11 +112,14 @@ if __name__ == "__main__":
     # read domain names from csv file
     Webscraper.read_csv(DOMAIN_NAME_CSV_FILE)
     
-    # scrape all domain names contained in DOMAIN_NAME_CSV_FILE
     #v---- record how long the scraping operation takes
     start = time.time()
+
+    # scrape all domain names contained in DOMAIN_NAME_CSV_FILE
     Webscraper.scrap_all()
+    
     end = time.time()
+    
     
     Webscraper.save_file(SCRAPED_DOMAIN_NAME_FILE)
 
