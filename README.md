@@ -11,8 +11,17 @@ TODO
 Usage
 ============
 
-TODO
+Docker
+======
 
+#### Build
+```bash
+docker build -t webscraper .
+#Linux/mac
+docker run -it --rm -v ./output:/app/output webscraper:latest
+#powershell (Windows)
+docker run -it --rm -v ${PWD}/output:/app/output webscraper:latest
+```
 Future Feature
 ========
 - [Scrapy | A Fast and Powerful Scraping and Web Crawling Framework](https://scrapy.org/)

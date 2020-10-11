@@ -34,7 +34,7 @@ import json
 END = 4
 # Alexa top 1 million domain names (actually around 600k in reality)
 DOMAIN_NAME_CSV_FILE = "./top-1m-internet-domains.csv"
-SCRAPED_DOMAIN_NAME_FILE = f"./scraping_results_x{END}_{time.time()}" + ".json"
+SCRAPED_DOMAIN_NAME_FILE = f"./output/scraping_results_x{END}_{time.time()}" + ".json"
 # number of domains to be read
 
 
