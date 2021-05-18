@@ -29,27 +29,32 @@
 import requests
 import csv
 import time
-import json 
+import json
+import concurrent.futures
+import threading
+import logging
 
-END = 4
 # Alexa top 1 million domain names (actually around 600k in reality)
-DOMAIN_NAME_CSV_FILE = "./top-1m-internet-domains.csv"
-SCRAPED_DOMAIN_NAME_FILE = f"./output/scraping_results_x{END}_{time.time()}" + ".json"
-# number of domains to be read
+DOMAIN_NAME_CSV_FILE = "./top-1m-internet-domains_text_100.csv"
+# DOMAIN_NAME_CSV_FILE = "./top-1m-internet-domains.csv"
 
+SCRAPED_DOMAIN_NAME_FILE = f"./output/scraping_results_{time.time()}" + \
+    ".json"
+# number of domains to be read
+NUM_DOMAINS = 100
 
 class webscraper:
     def __init__(self):
         self._websites_list = []
         self._scraping_results = []
-        
 
     # reads and grabs the second column of the csv file
     # which hold list of internet domain names
+
     def read_csv(self, file_name):
         with open(file_name, "r") as website_csv:
             csvreader = csv.reader(website_csv, delimiter=",")
-            for x, domain in enumerate(csvreader):
+            for domain in csvreader:
                 # "12313, google.com" <- grab the domain name only = domain[1]
                 self._websites_list.append(domain[1])
 
@@ -57,40 +62,50 @@ class webscraper:
     def scrape_domain(self, domain_name):
         try:
             return requests.get(f"http://{domain_name}", timeout=3).text
-        except requests.exceptions.TooManyRedirects as error:
+        except requests.exceptions.TooManyRedirects:
             return "Error: TooManyRedirects"
-        except requests.exceptions.ConnectionError as error:
+        except requests.exceptions.ConnectionError:
             return "Error: ConnectionError"
-        except requests.exceptions.ReadTimeout as error:
+        except requests.exceptions.ReadTimeout:
             return "Error: ReadTimeout"
+
+    def producer(self, event, domain_name):
+        while not event.is_set():
+            __start = time.time()
+            text_result = self.scrape_domain(domain_name)
+            __end = time.time()
+            logging.info(f"Website: {domain_name}")
+            logging.info(f"Result Lengnth:{len(text_result)}")
+            logging.info(f"Load Time: {__end - __start} seconds")
+
+            self._scraping_results.append({
+                "domain": domain_name,
+                "epoch": time.time(),
+                "length": len(text_result),
+                "loadtime": __end - __start,
+                "result": text_result
+            })
+        logging.info("Producer received event. Exiting")
+        event = threading.Event()
     # scrapes all the domain names contained in self._websites_list
     # which comes from read_csv()
-    def scrap_all(self):
-        for x, web_domain_name in enumerate(self._websites_list):
-            # number of domain names to scrap from .csv file
-            if x < END:
 
-                # record time it takes to grab page
-                start_fetch_time = time.time()
-                text_result = self.scrape_domain(web_domain_name)
-                end_fetch_time = time.time()
-                # get snipit of result text ex:" <!doctype html><html  style='font-size:..."
-                snipit = text_result[0:40].strip() if len(text_result) > 0 else ""
+    def scrap_all(self,__website_list):
+        print(len(__website_list))
+        event = threading.Event()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(__website_list)) as executor:
+            for domain in __website_list:
+                executor.submit(self.producer, event, domain)
 
-                print(f"Website:{web_domain_name}")
-                print(f"Result:{snipit}.....")
-                print(f"Total Time: {end_fetch_time - start_fetch_time} seconds")
-                
-                self._scraping_results.append({
-                    "domain": web_domain_name,
-                    "epoch":time.time(),
-                    "loadtime": f"{end_fetch_time - start_fetch_time} seconds",
-                    "result": text_result
-                })
-    def save_file(self,file_name):
+            time.sleep(0.1)
+            logging.info("Main: about to set event")
+            event.set()
+
+    def save_file(self, file_name):
         with open(file_name, "w", encoding="utf8") as scraped_domains_file:
             serialize_results = json.dumps(self._scraping_results)
             scraped_domains_file.write(serialize_results)
+
     @property
     def website_list(self):
         """
@@ -105,22 +120,25 @@ class webscraper:
         """
         return self._scraping_results
 
+
 if __name__ == "__main__":
     print("webscriaping started")
+    format = "%(asctime)s: %(message)s"
+
+    logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
     Webscraper = webscraper()
     # read domain names from csv file
     Webscraper.read_csv(DOMAIN_NAME_CSV_FILE)
-    
-    #v---- record how long the scraping operation takes
+
+    # v---- record how long the scraping operation takes
     start = time.time()
 
     # scrape all domain names contained in DOMAIN_NAME_CSV_FILE
-    Webscraper.scrap_all()
-    
+    Webscraper.scrap_all(Webscraper.website_list[0:NUM_DOMAINS])
+
     end = time.time()
-    
-    
+
     Webscraper.save_file(SCRAPED_DOMAIN_NAME_FILE)
 
     print(f"Time Elapsed: {end - start} seconds")
